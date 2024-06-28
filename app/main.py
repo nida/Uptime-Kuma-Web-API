@@ -1,5 +1,5 @@
 # main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 
 from routers import (
@@ -21,6 +21,24 @@ from app_setup import initialize_app
 
 app = FastAPI(title=app_settings.PROJECT_NAME)
 app.router.redirect_slashes = True
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def enforce_https(request: Request, call_next):
+    if request.headers.get('x-forwarded-proto', request.url.scheme) != "https":
+        url = request.url.replace(scheme="https")
+        return RedirectResponse(url=url)
+    response = await call_next(request)
+    return response
+
 
 app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(settings.router, prefix="/settings", tags=["Settings"])
